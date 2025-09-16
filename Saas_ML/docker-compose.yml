@@ -1,0 +1,40 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:15
+    container_name: saas_postgres
+    environment:
+      POSTGRES_USER: saas_user
+      POSTGRES_PASSWORD: senha_forte
+      POSTGRES_DB: saas_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: saas_redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    container_name: saas_backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+
+  analysis:
+    build: ./analysis
+    container_name: saas_analysis
+    ports:
+      - "5000:5000"
+
+  frontend:
+    build: ./frontend
+    container_name: saas_frontend
+    ports:
+      - "5173:5173"

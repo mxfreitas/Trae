@@ -1,0 +1,159 @@
+INSTRUCTIONS - Como executar o projeto SaaS localmente
+=====================================================
+
+Resumo
+------
+Este projeto contém um esqueleto para um SaaS com:
+- Backend: Node.js (Express)
+- Analysis: Python (Flask) para módulos de análise (Curva ABC)
+- Frontend: React (Vite)
+- Banco: PostgreSQL
+- Cache: Redis
+- Arquivo SQL de inicialização: init.sql
+
+Este arquivo descreve como executar localmente via Docker Compose (recomendado) e também como rodar cada serviço sem Docker.
+
+Local onde os arquivos foram colocados (no ambiente desta máquina):
+/mnt/data/saas-project
+
+Portas padrão (conforme docker-compose.yml):
+- Frontend: http://localhost:5173
+- Node Backend: http://localhost:3000
+- Python Analysis (Flask): http://localhost:5000
+- PostgreSQL: 5432
+- Redis: 6379
+
+
+A) Pré-requisitos
+------------------
+Opção 1 (recomendado): Docker & Docker Compose instalados
+  - Docker: https://docs.docker.com/get-docker/
+  - Docker Compose v2: normalmente já vem com o Docker Desktop ou a instalação de pacote no Linux.
+
+Opção 2 (sem Docker) - instalar localmente:
+  - Node.js 18/20 LTS, npm
+  - Python 3.11+, pip, virtualenv (opcional)
+  - PostgreSQL (instalado localmente) - versão 12+
+  - Redis (opcional, pode usar Docker para Redis)
+
+
+B) Executando com Docker Compose (modo recomendado)
+--------------------------------------------------
+1. Descompacte o arquivo ZIP do projeto e entre na pasta:
+   unzip saas-project.zip -d ./saas-project
+   cd saas-project
+
+2. Build e subir todos os serviços:
+   docker compose up -d --build
+
+   Isso criará e iniciará os containers: postgres, redis, backend (Node), analysis (Python), frontend (Vite).
+
+3. Verifique os logs (opcional):
+   docker compose logs -f
+
+4. Acesse o frontend em:
+   http://localhost:5173
+
+5. Inicializar o banco de dados com o script init.sql:
+   5.a) Copiar para dentro do container Postgres e executar:
+       docker cp init.sql saas_postgres:/tmp/init.sql
+       docker exec -it saas_postgres psql -U saas_user -d saas_db -f /tmp/init.sql
+
+   5.b) Ou (se o Postgres for local, sem Docker):
+       psql -U saas_user -d saas_db -f init.sql
+
+6. Parar e remover containers:
+   docker compose down
+
+
+C) Executando sem Docker (modo desenvolvimento)
+----------------------------------------------
+1. Backend (Node.js)
+   cd backend
+   npm install
+   # definir variáveis de ambiente (veja seção D)
+   npm run dev   # ou: node src/app.js
+
+2. Python Analysis (Flask)
+   cd analysis
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   python main.py
+
+3. Frontend (Vite/React)
+   cd frontend
+   npm install
+   npm run start   # inicia o Vite (porta 5173)
+
+4. Banco de dados (Postgres local)
+   - Instale Postgres e crie usuário/banco conforme env vars.
+   - Rode o script init.sql para criar tabelas:
+     psql -U saas_user -d saas_db -f init.sql
+
+
+D) Variáveis de ambiente (exemplos)
+-----------------------------------
+Crie arquivos .env (no backend e no analysis) com conteúdo semelhante:
+
+backend/.env
+-----------
+PORT=3000
+JWT_SECRET=trocar_por_uma_chave_segura
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=saas_user
+DB_PASSWORD=senha_forte
+DB_NAME=saas_db
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+analysis/.env (se necessário)
+-----------------------------
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=saas_user
+DB_PASSWORD=senha_forte
+DB_NAME=saas_db
+REDIS_HOST=localhost
+
+
+E) Inicializando banco (init.sql)
+--------------------------------
+O arquivo init.sql inclui scripts básicos para criar as tabelas 'users' e 'products'.
+
+Use psql ou exec no container Postgres como mostrado na seção B.5.
+
+Exemplo (host com psql):
+  PGPASSWORD=senha_forte psql -U saas_user -h localhost -d saas_db -f init.sql
+
+
+F) Logs e troubleshooting rápido
+--------------------------------
+- Se docker compose build falhar: verifique Dockerfiles em backend/, analysis/ e frontend/.
+- Se uma porta estiver em uso: pare o processo que ocupa a porta ou altere as portas no docker-compose.yml.
+- Erro de conexão com Postgres: verifique as variáveis de ambiente DB_* e se o container Postgres está em execução.
+- Para ver logs de um serviço específico:
+  docker compose logs -f backend
+  docker compose logs -f postgres
+
+G) Dicas para desenvolvimento e produção
+----------------------------------------
+- Em produção, utilize um reverse-proxy (Nginx) e HTTPS (Certbot / Let's Encrypt).
+- Use um manager de processos (PM2) para o Node ou container orchestration (Kubernetes / ECS).
+- Evite deixar segredos em .env em repositório público; use secret manager (HashiCorp Vault, AWS Secrets Manager).
+- Configure backups regulares do PostgreSQL (pg_dump) e snapshots dos volumes de dados.
+
+H) Próximos passos recomendados
+-------------------------------
+- Conectar os endpoints do backend às APIs reais (Mercado Livre, Shopee, Amazon).
+- Implementar autenticação JWT/refresh tokens e proteger rotas sensíveis.
+- Implementar cache (Redis) para resultados de pesquisa e limitar chamadas às APIs externas.
+- Implementar testes automatizados (unit tests + integração).
+- Criar pipeline CI/CD (GitHub Actions / GitLab CI).
+
+----
+Arquivo gerado automaticamente por ChatGPT. Se quiser, eu posso:
+- Gerar um arquivo .zip / .rar atualizado que contenha este Instructions.txt (e já inclui os Dockerfiles criados).
+- Executar verificações básicas (ex.: checar se docker compose up conseguirá buildar as imagens com os Dockerfiles).
+
